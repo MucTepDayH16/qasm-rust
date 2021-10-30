@@ -294,9 +294,7 @@ pub fn match_mathexpr(tokens: &mut TokenStream) -> Result<String> {
         };
 
         tokens.next();
-        expr_string.push_str(" ");
         expr_string.push_str(&string);
-        expr_string.push_str(" ");
     }
 
     Ok(expr_string)

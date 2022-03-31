@@ -187,13 +187,7 @@ pub fn gate(tokens: &mut TokenStream) -> Result<AstNode> {
 
     let list = match_id_list(tokens)?;
     match_token(tokens, Token::LCParen)?;
-
-    let applications = if tokens.peek().ok_or(Error::SourceError)? != &&Token::RCParen {
-        match_application_list(tokens)?
-    } else {
-        vec![]
-    };
-
+    let applications = match_application_list(tokens)?;
     match_token(tokens, Token::RCParen)?;
 
     Ok(AstNode::Gate(id, list, params, applications))
@@ -203,12 +197,10 @@ pub fn gate(tokens: &mut TokenStream) -> Result<AstNode> {
 // Terminals
 //////////////////////////////////////////////////////////////////////
 pub fn match_application_list(tokens: &mut TokenStream) -> Result<Vec<AstNode>> {
-    let id = match_identifier(tokens)?;
-    let head = application(tokens, id)?;
-    let mut args = vec![head];
+    let mut args = vec![];
 
-    while let &Token::Id(id) = tokens.peek().ok_or(Error::SourceError)? {
-        let tail = application(tokens, id.clone())?;
+    while let Ok(id) = match_identifier(tokens) {
+        let tail = application(tokens, id)?;
         args.push(tail);
     }
 
@@ -330,11 +322,11 @@ pub fn match_nninteger(tokens: &mut TokenStream) -> Result<i32> {
 }
 
 pub fn match_identifier(tokens: &mut TokenStream) -> Result<String> {
-    if let None = tokens.peek() {
-        return Err(Error::SourceError);
-    }
-    match tokens.next() {
-        Some(Token::Id(s)) => Ok(s.clone()),
+    match tokens.peek() {
+        Some(Token::Id(s)) => {
+            tokens.next();
+            Ok(s.clone())
+        },
         Some(_) => Err(Error::MissingIdentifier),
         None => Err(Error::SourceError),
     }
@@ -358,7 +350,6 @@ pub fn match_token_peek(tokens: &mut TokenStream, eq_token: Token) -> Result<()>
 pub fn match_semicolon(tokens: &mut TokenStream) -> Result<()> {
     match tokens.next() {
         Some(&Token::Semicolon) => Ok(()),
-        Some(_) => Err(Error::MissingSemicolon),
-        _ => Err(Error::SourceError),
+        _ => Err(Error::MissingSemicolon),
     }
 }

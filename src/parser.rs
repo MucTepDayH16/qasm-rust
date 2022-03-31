@@ -58,10 +58,13 @@ pub fn version(tokens: &mut TokenStream) -> Result<f32> {
     }
     #[cfg(feature = "no-check-ver")]
     {
-        let _ = match_token(tokens, Token::OpenQASM)
-            .and_then(|_| match_real(tokens))
-            .and_then(|_| match_semicolon(tokens));
-        version = 2.0;
+        version = match match_token(tokens, Token::OpenQASM) {
+            Ok(_) => match_real(tokens).and_then(|r| {
+                match_semicolon(tokens)?;
+                Ok(r)
+            })?,
+            Err(_) => 2.0,
+        };
     }
 
     Ok(version)
@@ -317,8 +320,11 @@ pub fn match_argument(tokens: &mut TokenStream) -> Result<Argument> {
 }
 
 pub fn match_real(tokens: &mut TokenStream) -> Result<f32> {
-    match tokens.next() {
-        Some(Token::Real(n)) => Ok(*n),
+    match tokens.peek() {
+        Some(Token::Real(n)) => {
+            tokens.next();
+            Ok(*n)
+        },
         Some(_) => Err(Error::MissingReal),
         None => Err(Error::SourceError),
     }
@@ -344,16 +350,8 @@ pub fn match_identifier(tokens: &mut TokenStream) -> Result<String> {
 }
 
 pub fn match_token(tokens: &mut TokenStream, eq_token: Token) -> Result<()> {
-    match tokens.next() {
-        Some(token) if &eq_token == token => Ok(()),
-        _ => Err(Error::SourceError),
-    }
-}
-
-#[allow(dead_code)]
-pub fn match_token_peek(tokens: &mut TokenStream, eq_token: Token) -> Result<()> {
-    match tokens.peek().copied() {
-        Some(token) if &eq_token == token => Ok(()),
+    match tokens.next_if_eq(&&eq_token) {
+        Some(_) => Ok(()),
         _ => Err(Error::SourceError),
     }
 }

@@ -12,6 +12,10 @@ license = "MIT"
 travis-ci = { repository = "QCGPU/qasm-rust", branch = "master" }
 maintenance = { status = "actively-developed" }
 
+[features]
+default = []
+no-check-ver = []
+
 [dependencies]
 regex = "0.2"
 

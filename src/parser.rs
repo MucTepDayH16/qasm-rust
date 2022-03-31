@@ -48,10 +48,21 @@ fn parse_node(tokens: &mut TokenStream) -> Result<AstNode> {
 }
 
 pub fn version(tokens: &mut TokenStream) -> Result<f32> {
-    match_token(tokens, Token::OpenQASM)
-        .map_err(|_| Error::MissingVersion)?;
-    let version = match_real(tokens)?;
-    match_semicolon(tokens)?;
+    let version;
+    #[cfg(not(feature = "no-check-ver"))]
+    {
+        match_token(tokens, Token::OpenQASM)
+            .map_err(|_| Error::MissingVersion)?;
+        version = match_real(tokens)?;
+        match_semicolon(tokens)?;
+    }
+    #[cfg(feature = "no-check-ver")]
+    {
+        let _ = match_token(tokens, Token::OpenQASM)
+            .and_then(|_| match_real(tokens))
+            .and_then(|_| match_semicolon(tokens));
+        version = 2.0;
+    }
 
     Ok(version)
 }

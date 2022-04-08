@@ -3,9 +3,9 @@ extern crate qasm;
 
 use glob::glob;
 use qasm::{lex, parse, process};
-use std::path::Path;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::Path;
 
 fn test_parse(source: &str) {
     let mut tokens = lex(source);

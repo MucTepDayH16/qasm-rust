@@ -2,15 +2,13 @@
 //! Most methods are not documented, and should only be accessed
 //! indirectly from the `parse` method.
 
-use std::iter::Peekable;
-use token::Token;
-use error::Error;
 use ast::{Argument, AstNode};
+use error::Error;
+use std::iter::Peekable;
 use std::result;
+use token::Token;
 
-const SUPPORTED_VERSIONS: [f32; 1] = [
-    2.0,
-];
+const SUPPORTED_VERSIONS: [f32; 1] = [2.0];
 
 type TokenStream<'a> = Peekable<std::slice::Iter<'a, Token>>;
 type Result<T> = result::Result<T, Error>;
@@ -51,8 +49,7 @@ pub fn version(tokens: &mut TokenStream) -> Result<f32> {
     let version;
     #[cfg(not(feature = "no-check-ver"))]
     {
-        match_token(tokens, Token::OpenQASM)
-            .map_err(|_| Error::MissingVersion)?;
+        match_token(tokens, Token::OpenQASM).map_err(|_| Error::MissingVersion)?;
         version = match_real(tokens)?;
         match_semicolon(tokens)?;
     }
@@ -324,7 +321,7 @@ pub fn match_real(tokens: &mut TokenStream) -> Result<f32> {
         Some(Token::Real(n)) => {
             tokens.next();
             Ok(*n)
-        },
+        }
         Some(_) => Err(Error::MissingReal),
         None => Err(Error::SourceError),
     }
@@ -343,7 +340,7 @@ pub fn match_identifier(tokens: &mut TokenStream) -> Result<String> {
         Some(Token::Id(s)) => {
             tokens.next();
             Ok(s.clone())
-        },
+        }
         Some(_) => Err(Error::MissingIdentifier),
         None => Err(Error::SourceError),
     }

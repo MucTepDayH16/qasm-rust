@@ -167,23 +167,21 @@
 //! ```
 extern crate regex;
 
-mod token;
-mod lexer;
-mod error;
-mod parser;
 mod ast;
+mod error;
+mod lexer;
+mod parser;
+mod token;
 
+use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;
-use regex::{Captures, Regex};
 use std::path::Path;
 
-pub use error::Error;
 pub use ast::Argument;
 pub use ast::AstNode;
+pub use error::Error;
 pub use token::Token;
-
-type Result<T> = std::result::Result<T, Error>;
 
 /// Remove comments from an input string and resolves include statements.
 ///
@@ -222,25 +220,46 @@ type Result<T> = std::result::Result<T, Error>;
 ///  * ```
 ///  */
 /// ```
-pub fn process(input: &str, cwd: &Path) -> String {
+pub fn process<'t, Cwds>(input: &'t str, cwds: Cwds) -> Result<String, &'t str>
+where
+    Cwds: IntoIterator,
+    Cwds::IntoIter: Clone,
+    Cwds::Item: AsRef<Path>,
+{
+    let include_regex = Regex::new(r#"(?P<i>include\s*"(?P<s>.*)";)"#).unwrap(); // Regex for include statments
+    let mut span = (0, 0);
+    let mut source = String::new();
+    let cwds = cwds.into_iter();
+    for cap in include_regex.captures_iter(&*input) {
+        let m = cap.name("s").unwrap();
+        let filename = m.as_str();
+        let mut cwd_iter = cwds.clone();
+        let content = loop {
+            let cwd = cwd_iter.next().ok_or_else(|| filename)?;
+            let path = cwd.as_ref().join(&filename);
+            let mut f = match File::open(path) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+
+            let mut buf = String::new();
+            f.read_to_string(&mut buf).unwrap();
+            break buf;
+        };
+
+        let m = cap.name("i").unwrap();
+        let prev = span.1;
+        span = (m.start(), m.end());
+
+        source += &input[prev..span.0];
+        source += &content;
+    }
+    source = source + &input[span.1..];
+
     let comment_regex = Regex::new(r"//.*").unwrap();
-    let cleaned = comment_regex.replace_all(input, ""); // Removed All Comments
+    let source = comment_regex.replace_all(&*source, "").to_string(); // Removed All Comments
 
-    let include_regex = Regex::new(r#"include\s*"(?P<s>.*)";"#).unwrap(); // Regex for include statments
-
-    let replace_with_file = |caps: &Captures| {
-        let path = cwd.join(&caps["s"]);
-
-        let mut f = File::open(path).expect("Couldn't Open An Include File");
-        let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .expect("Couldn't Read Include Statement");
-        comment_regex.replace_all(&contents, "").into()
-    };
-
-    let processed = include_regex.replace_all(&cleaned, replace_with_file); // Remove Includes
-
-    processed.into()
+    Ok(source)
 }
 
 /// Take a source string with no includes or comments and returns the tokens
@@ -317,7 +336,7 @@ pub fn lex(input: &str) -> Vec<token::Token> {
 ///
 /// // Ok([QReg("a", 3), ApplyGate("CX", [Qubit("a", 0), Qubit("a", 1)], [])])
 /// ```
-pub fn parse(tokens: &Vec<token::Token>) -> Result<Vec<AstNode>> {
+pub fn parse(tokens: &Vec<token::Token>) -> Result<Vec<AstNode>, Error> {
     let mut tokens = tokens.iter().peekable();
     parser::parse(&mut tokens)
 }

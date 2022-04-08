@@ -8,7 +8,7 @@ fn main() {
     let input = include_str!("qft.qasm");
     let cwd = Path::new(file!()).parent().unwrap();
 
-    let processed = process(input, cwd);
+    let processed = process(input, cwd).unwrap();
     let tokens = lex(&processed);
 
     match parse(&tokens) {

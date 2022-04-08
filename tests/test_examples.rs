@@ -29,7 +29,7 @@ fn works_with_examples() {
                 let mut f = File::open(&path).unwrap();
                 let mut contents = String::new();
                 f.read_to_string(&mut contents).expect("Couldn't Read File");
-                contents = process(&contents, Path::new("tests/source"));
+                contents = process(&contents, Some(Path::new("tests/source"))).unwrap();
 
                 test_parse(&contents)
             }

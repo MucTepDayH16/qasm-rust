@@ -286,7 +286,7 @@ where
 /// //  Id("CX"), Id("a"), LSParen, NNInteger(0), RSParen, Comma, Id("a"), LSParen, NNInteger(1), RSParen, Semicolon]
 /// ```
 pub fn lex(input: &str) -> Vec<token::Token> {
-    let mut lexer = lexer::Lexer::new(input);
+    let mut lexer = lexer::Lexer::new(input.chars());
     let mut tokens = vec![];
 
     loop {

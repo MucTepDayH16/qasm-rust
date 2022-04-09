@@ -2,16 +2,15 @@ use token;
 use token::Token;
 
 use std::iter::Peekable;
-use std::str::Chars;
 
-pub struct Lexer<'a> {
-    input: Peekable<Chars<'a>>,
+pub struct Lexer<I: Iterator<Item=char>> {
+    input: Peekable<I>,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &str) -> Lexer {
+impl<I: Iterator<Item=char>> Lexer<I> {
+    pub fn new(input: I) -> Self {
         Lexer {
-            input: input.chars().peekable(),
+            input: input.peekable(),
         }
     }
 
@@ -128,7 +127,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl<'a> Iterator for Lexer<'a> {
+impl<I: Iterator<Item=char>> Iterator for Lexer<I> {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
         let tok = self.next_token();

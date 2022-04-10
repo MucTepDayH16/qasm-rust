@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::token::TokenType;
+
 /// Represents Errors that can occur during parsing.
 ///
 /// The name of each corresponds to the type of error.
@@ -12,8 +14,8 @@ use std::fmt;
 /// println!("Got an error: {}", qasm::Error::UnsupportedVersion);
 /// // "Got an error: Unsupported Version. Please Use OpenQASM Version 2.0"
 /// ```
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Error {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Error<'t> {
     MissingSemicolon,
     UnsupportedVersion,
     SourceError,
@@ -21,11 +23,12 @@ pub enum Error {
     MissingInt,
     MissingIdentifier,
     MissingVersion,
+    UnexpectedToken(TokenType<'t>, TokenType<'t>),
 }
 
-impl fmt::Display for Error {
+impl<'t> fmt::Display for Error<'t> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Error::MissingSemicolon => write!(f, "Missing Semicolon"),
             Error::UnsupportedVersion => {
                 write!(f, "Unsupported Version. Please Use OpenQASM Version 2.0")
@@ -36,6 +39,9 @@ impl fmt::Display for Error {
             Error::MissingIdentifier => write!(f, "Missing An Identifier"),
             Error::MissingVersion => {
                 write!(f, "Missing A Version Statement At The Start Of The File")
+            }
+            Error::UnexpectedToken(expected, found) => {
+                write!(f, "Expected Token {expected:?} But Found {found:?}",)
             }
         }
     }

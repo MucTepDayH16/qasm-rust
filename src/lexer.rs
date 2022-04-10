@@ -1,36 +1,37 @@
-use token;
-use token::Token;
+use token::{Token, TokenType};
 
-use std::iter::Peekable;
-
-pub struct Lexer<I: Iterator<Item=char>> {
-    input: Peekable<I>,
+#[derive(Debug, Clone)]
+pub struct Lexer<'t> {
+    idx: Option<usize>,
+    input: &'t str,
 }
 
-impl<I: Iterator<Item=char>> Lexer<I> {
-    pub fn new(input: I) -> Self {
+impl<'t> Lexer<'t> {
+    pub fn new(input: &'t str) -> Self {
         Lexer {
-            input: input.peekable(),
+            idx: Some(0),
+            input,
         }
     }
 
     fn read_char(&mut self) -> Option<char> {
-        self.input.next()
+        let c = self.peek_char()?;
+        let span = self.idx?;
+        self.idx = self
+            .input
+            .get(span..)?
+            .char_indices()
+            .nth(1)
+            .map(|(idx, _)| span + idx);
+        Some(c)
     }
 
-    fn peek_char(&mut self) -> Option<&char> {
-        self.input.peek()
-    }
-
-    fn peek_char_eq(&mut self, ch: char) -> bool {
-        match self.peek_char() {
-            Some(&peek_ch) => peek_ch == ch,
-            None => false,
-        }
+    fn peek_char(&mut self) -> Option<char> {
+        self.input[self.idx?..].chars().next()
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(&c) = self.peek_char() {
+        while let Some(c) = self.peek_char() {
             if !c.is_whitespace() {
                 break;
             }
@@ -38,120 +39,154 @@ impl<I: Iterator<Item=char>> Lexer<I> {
         }
     }
 
-    fn peek_is_alphanumeric(&mut self) -> bool {
-        match self.peek_char() {
-            Some(&ch) => is_alphanumeric(ch),
-            None => false,
-        }
-    }
+    fn read_id(&mut self) -> Option<&'t str> {
+        let mut end = self.idx?;
+        let start = end;
 
-    fn read_identifier(&mut self, first: char) -> String {
-        let mut ident = String::new();
-        ident.push(first);
-
-        while self.peek_is_alphanumeric() {
-            ident.push(self.read_char().unwrap());
-        }
-
-        ident
-    }
-
-    fn read_number(&mut self, first: char) -> String {
-        let mut number = String::new();
-        number.push(first);
-
-        while let Some(&c) = self.peek_char() {
-            if !c.is_numeric() && c != '.' {
+        for (idx, ch) in self.input[start..].char_indices() {
+            if !ch.is_alphanumeric() && ch != '_' {
+                end = start + idx;
                 break;
             }
-            number.push(self.read_char().unwrap());
         }
 
-        number
+        match self.input.get(start..end) {
+            Some(id) => {
+                self.idx = Some(end);
+                Some(id)
+            }
+            None => {
+                self.idx = None;
+                None
+            }
+        }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    fn read_number(&mut self) -> Option<&'t str> {
+        let mut end = self.idx?;
+        let start = end;
+
+        for (idx, ch) in self.input[start..].char_indices() {
+            if !is_number(ch) {
+                end = start + idx;
+                break;
+            }
+        }
+
+        match self.input.get(start..end) {
+            Some(num) => {
+                self.idx = Some(end);
+                Some(num)
+            }
+            None => {
+                self.idx = None;
+                None
+            }
+        }
+    }
+}
+
+impl<'t> Iterator for Lexer<'t> {
+    type Item = Token<'t>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         self.skip_whitespace();
+        let span = self.idx?;
+        let mut chars = self.input[span..].char_indices().peekable();
+        let ch = chars.peek()?.1;
 
-        match self.read_char() {
-            Some('=') => {
-                if self.peek_char_eq('=') {
-                    self.read_char();
-                    Token::Equals
-                } else {
-                    // Shouldn't Be A Single Equals!
-                    panic!("Error: Missing Charachter. Expected another `=`.");
-                }
-            }
-            Some('+') => Token::Plus,
-            Some('-') => {
-                if self.peek_char_eq('>') {
-                    self.read_char();
-                    Token::Arrow
-                } else {
-                    Token::Minus
-                }
-            }
-            Some('*') => Token::Times,
-            Some('/') => Token::Divide,
-            Some('^') => Token::Power,
-            Some(';') => Token::Semicolon,
-            Some(',') => Token::Comma,
-            Some('(') => Token::LParen,
-            Some('[') => Token::LSParen,
-            Some('{') => Token::LCParen,
-            Some(')') => Token::RParen,
-            Some(']') => Token::RSParen,
-            Some('}') => Token::RCParen,
-            Some(ch) => {
-                if is_letter(ch) {
-                    let literal = self.read_identifier(ch);
-                    token::lookup_ident(&literal)
-                } else if ch.is_numeric() {
-                    let num_str = self.read_number(ch);
-                    if num_str.contains('.') {
-                        let num = num_str.parse::<f32>().unwrap();
-                        Token::Real(num)
-                    } else {
-                        let num = num_str.parse::<i32>().unwrap();
-                        Token::NNInteger(num)
-                    }
-                } else {
-                    Token::Illegal
-                }
-            }
-
-            // EOF
-            None => Token::EndOfFile,
-        }
-    }
-}
-
-impl<I: Iterator<Item=char>> Iterator for Lexer<I> {
-    type Item = Token;
-    fn next(&mut self) -> Option<Token> {
-        let tok = self.next_token();
-        if tok == Token::EndOfFile {
-            None
-        } else {
+        if let Some(mut tok) = Token::from_char(ch, 0..0) {
+            chars.next()?;
+            self.idx = chars.peek().map(|(idx, _)| span + idx);
+            let span = match self.idx {
+                Some(end) => span..end,
+                None => span..self.input.len(),
+            };
+            *tok.span_mut() = span;
             Some(tok)
+        } else if is_ident(ch) {
+            let start = self.idx.unwrap_or_else(|| self.input.len());
+            let id = self.read_id()?;
+            let end = self.idx.unwrap_or_else(|| self.input.len());
+            Some(Token::lookup_ident(id, start..end))
+        } else if is_number(ch) {
+            let start = self.idx.unwrap_or_else(|| self.input.len());
+            let num = self.read_number()?;
+            let end = self.idx.unwrap_or_else(|| self.input.len());
+            if let Ok(i) = num.parse::<i32>() {
+                Some(Token {
+                    token_type: TokenType::Int(i),
+                    span: start..end,
+                })
+            } else if let Ok(f) = num.parse::<f32>() {
+                Some(Token {
+                    token_type: TokenType::Real(f),
+                    span: start..end,
+                })
+            } else {
+                Some(TokenType::Unknown.into())
+            }
+        } else {
+            None
         }
     }
 }
 
-fn is_letter(ch: char) -> bool {
+fn is_ident(ch: char) -> bool {
     ch.is_alphabetic() || ch == '_'
 }
-fn is_alphanumeric(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
+
+fn is_number(ch: char) -> bool {
+    ch.is_numeric() || ch == '.'
 }
 
 #[test]
 fn is_letter_test() {
-    assert!(is_letter('_'));
-    assert!(is_letter('a'));
-    assert!(is_letter('Z'));
+    assert!(is_ident('_'));
+    assert!(is_ident('a'));
+    assert!(is_ident('Z'));
 
-    assert!(!is_letter('*'));
-    assert!(!is_letter('1'));
+    assert!(!is_ident('*'));
+    assert!(!is_ident('1'));
+}
+
+#[cfg(test)]
+#[test]
+fn lexer_test() {
+    let source = "OPENQASM 2.0;
+    gate majority a,b,c 
+    { 
+      cx c,b; 
+      cx c,a; 
+      ccx a,b,c; 
+    }
+    gate unmaj a,b,c 
+    { 
+      ccx a,b,c; 
+      cx c,a; 
+      cx a,b; 
+    }
+    qreg cin[1];
+    qreg a[4];
+    qreg b[4];
+    qreg cout[1];
+    creg ans[5];
+    x a[0];
+    x b;
+    majority cin[0],b[0],a[0];
+    majority a[0],b[1],a[1];
+    majority a[1],b[2],a[2];
+    majority a[2],b[3],a[3];
+    cx a[3],cout[0];
+    unmaj a[2],b[3],a[3];
+    unmaj a[1],b[2],a[2];
+    unmaj a[0],b[1],a[1];
+    unmaj cin[0],b[0],a[0];
+    measure b[0] -> ans[0];
+    measure b[1] -> ans[1];
+    measure b[2] -> ans[2];
+    measure b[3] -> ans[3];
+    measure cout[0] -> ans[4];";
+
+    println!("{:?}", Lexer::new(source).collect::<Vec<_>>());
 }

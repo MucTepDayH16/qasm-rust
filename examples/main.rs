@@ -11,7 +11,7 @@ fn main() {
     let processed = process(input, cwd).unwrap();
     let tokens = lex(&processed);
 
-    match parse(&tokens) {
+    match parse(tokens.clone()) {
         Ok(ast) => {
             println!("AST: {:?}", ast);
             println!("\x1b[32mAll Okay!\x1b[0m");

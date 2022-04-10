@@ -1,18 +1,21 @@
+use std::fmt;
+use std::iter::Peekable;
+
+pub(crate) type Span = std::ops::Range<usize>;
+
 /// Tokens returned from lexing. Represents a small amount of the source code.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Token {
+pub enum TokenType<'t> {
     /// This token represents an illegal token. This is usually an error in the source code.
-    Illegal,
-    /// This token represents the end of a file.
-    EndOfFile,
+    Unknown,
 
     // Literals
     /// Represents a Real Number
     Real(f32),
     /// Represents an integer
-    NNInteger(i32),
+    Int(i32),
     /// Represents an identifier
-    Id(String),
+    Id(&'t str),
 
     // Other Tokens
     /// The OPENQASM statement
@@ -33,9 +36,9 @@ pub enum Token {
     RSParen,
     /// A Right Curly Paren `}`
     RCParen,
-    /// An Arrow `->`
+    /// An Arrow `>`
     Arrow,
-    /// An Equals `==`
+    /// An Equals `=`
     Equals,
 
     // Mathematical Expressions
@@ -49,20 +52,6 @@ pub enum Token {
     Divide,
     /// Power Sign `^`
     Power,
-    /// Unary Sin function
-    Sin,
-    /// Unary Cos function
-    Cos,
-    /// Unary Tan function
-    Tan,
-    /// Unary exp function (e^x)
-    Exp,
-    /// Unary natural logarithm function
-    Ln,
-    /// Unary square root function
-    Sqrt,
-    /// Pi (3.1415....)
-    Pi,
 
     // Built In Gates
 
@@ -87,37 +76,105 @@ pub enum Token {
     If,
 }
 
-impl Default for Token {
-    /// Choose the Illegal token as default
-    fn default() -> Token {
-        Token::Illegal
+#[derive(Debug, Clone)]
+pub struct Token<'t> {
+    pub(crate) token_type: TokenType<'t>,
+    pub(crate) span: Span,
+}
+
+impl<'t> Token<'t> {
+    pub(crate) fn to_tup(self) -> (TokenType<'t>, Span) {
+        (self.token_type, self.span)
+    }
+
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
+
+    pub fn span_mut(&mut self) -> &mut Span {
+        &mut self.span
+    }
+
+    pub fn from_char(ch: char, span: Span) -> Option<Self> {
+        let token_type = match ch {
+            '=' => TokenType::Equals,
+            '+' => TokenType::Plus,
+            '-' => TokenType::Minus,
+            '*' => TokenType::Times,
+            '/' => TokenType::Divide,
+            '^' => TokenType::Power,
+            ';' => TokenType::Semicolon,
+            ',' => TokenType::Comma,
+            '(' => TokenType::LParen,
+            '[' => TokenType::LSParen,
+            '{' => TokenType::LCParen,
+            ')' => TokenType::RParen,
+            ']' => TokenType::RSParen,
+            '}' => TokenType::RCParen,
+            '>' => TokenType::Arrow,
+            _ => return None,
+        };
+
+        Some(Self { token_type, span })
+    }
+
+    pub fn lookup_ident(ident: &'t str, span: Span) -> Self {
+        let token_type = match ident {
+            "qreg" => TokenType::QReg,
+            "creg" => TokenType::CReg,
+            "barrier" => TokenType::Barrier,
+            "gate" => TokenType::Gate,
+            "measure" => TokenType::Measure,
+            "reset" => TokenType::Reset,
+            "include" => TokenType::Include,
+            "opaque" => TokenType::Opaque,
+            "if" => TokenType::If,
+            "OPENQASM" => TokenType::OpenQASM,
+            ident => TokenType::Id(ident),
+        };
+
+        Self { token_type, span }
     }
 }
 
-pub fn lookup_ident(ident: &str) -> Token {
-    match ident {
-        "qreg" => Token::QReg,
-        "creg" => Token::CReg,
-        "barrier" => Token::Barrier,
-        "gate" => Token::Gate,
-        "measure" => Token::Measure,
-        "reset" => Token::Reset,
-        "include" => Token::Include,
-        "opaque" => Token::Opaque,
-        "if" => Token::If,
-        "sin" => Token::Sin,
-        "cos" => Token::Cos,
-        "tan" => Token::Tan,
-        "exp" => Token::Exp,
-        "ln" => Token::Ln,
-        "sqrt" => Token::Sqrt,
-        "pi" => Token::Pi,
-        "OPENQASM" => Token::OpenQASM,
-        _ => Token::Id(ident.into()),
+impl<'t> PartialEq for Token<'t> {
+    fn eq(&self, other: &Self) -> bool {
+        self.token_type == other.token_type
+    }
+}
+
+impl<'t> From<TokenType<'t>> for Token<'t> {
+    fn from(token_type: TokenType<'t>) -> Self {
+        Self {
+            token_type,
+            span: 0..0,
+        }
+    }
+}
+
+impl<'t> Default for Token<'t> {
+    /// Choose the Illegal token as default
+    fn default() -> Self {
+        TokenType::Unknown.into()
+    }
+}
+
+#[derive(Clone)]
+pub struct TokenTree<'t, I: Iterator<Item = Token<'t>>> {
+    pub(crate) input: &'t str,
+    pub(crate) tree: Peekable<I>,
+}
+
+impl<'t, I: Clone + Iterator<Item = Token<'t>>> fmt::Debug for TokenTree<'t, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.tree.clone()).finish()
     }
 }
 
 #[test]
 fn lookup_ident_test() {
-    assert_eq!(lookup_ident("opaque"), Token::Opaque);
+    assert_eq!(
+        Token::lookup_ident("opaque", 0..6),
+        TokenType::Opaque.into()
+    );
 }

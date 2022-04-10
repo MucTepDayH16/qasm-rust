@@ -8,9 +8,9 @@ use std::io::prelude::*;
 use std::path::Path;
 
 fn test_parse(source: &str) {
-    let mut tokens = lex(source);
+    let tokens = lex(source);
 
-    match parse(&mut tokens) {
+    match parse(tokens) {
         Ok(_) => assert!(true),
         Err(e) => {
             println!("Error: {}", e);

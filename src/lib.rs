@@ -285,19 +285,11 @@ where
 /// //  QReg, Id("a"), LSParen, NNInteger(3), RSParen, Semicolon,
 /// //  Id("CX"), Id("a"), LSParen, NNInteger(0), RSParen, Comma, Id("a"), LSParen, NNInteger(1), RSParen, Semicolon]
 /// ```
-pub fn lex(input: &str) -> Vec<token::Token> {
-    let mut lexer = lexer::Lexer::new(input.chars());
-    let mut tokens = vec![];
-
-    loop {
-        let tok = lexer.next_token();
-        if tok == token::Token::EndOfFile {
-            break;
-        }
-        tokens.push(tok);
+pub fn lex<'t>(input: &'t str) -> token::TokenTree<'t, lexer::Lexer<'t>> {
+    token::TokenTree {
+        input,
+        tree: lexer::Lexer::new(input).peekable(),
     }
-
-    tokens
 }
 
 /// Changes a vector of tokens into an AST.
@@ -336,7 +328,9 @@ pub fn lex(input: &str) -> Vec<token::Token> {
 ///
 /// // Ok([QReg("a", 3), ApplyGate("CX", [Qubit("a", 0), Qubit("a", 1)], [])])
 /// ```
-pub fn parse(tokens: &Vec<token::Token>) -> Result<Vec<AstNode>, Error> {
-    let mut tokens = tokens.iter().peekable();
+pub fn parse<'t, I>(mut tokens: token::TokenTree<'t, I>) -> Result<Vec<AstNode<'t>>, Error>
+where
+    I: Iterator<Item = token::Token<'t>>,
+{
     parser::parse(&mut tokens)
 }

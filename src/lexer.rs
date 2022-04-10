@@ -1,16 +1,28 @@
 use token::{Token, TokenType};
 
+use crate::Span;
+
 #[derive(Debug, Clone)]
 pub struct Lexer<'t> {
-    idx: Option<usize>,
     input: &'t str,
+    idx: Option<usize>,
+    end: usize,
 }
 
 impl<'t> Lexer<'t> {
     pub fn new(input: &'t str) -> Self {
         Lexer {
-            idx: Some(0),
             input,
+            idx: Some(0),
+            end: input.len(),
+        }
+    }
+
+    pub fn new_spanned(input: &'t str, span: Span) -> Self {
+        Lexer {
+            input,
+            idx: Some(span.start),
+            end: span.end,
         }
     }
 
@@ -91,16 +103,20 @@ impl<'t> Iterator for Lexer<'t> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.skip_whitespace();
-        let span = self.idx?;
-        let mut chars = self.input[span..].char_indices().peekable();
+        let idx = self.idx?;
+        if idx >= self.end {
+            return None;
+        }
+
+        let mut chars = self.input[idx..].char_indices().peekable();
         let ch = chars.peek()?.1;
 
         if let Some(mut tok) = Token::from_char(ch, 0..0) {
             chars.next()?;
-            self.idx = chars.peek().map(|(idx, _)| span + idx);
+            self.idx = chars.peek().map(|(idy, _)| idx + idy);
             let span = match self.idx {
-                Some(end) => span..end,
-                None => span..self.input.len(),
+                Some(end) => idx..end,
+                None => idx..self.input.len(),
             };
             *tok.span_mut() = span;
             Some(tok)

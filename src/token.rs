@@ -1,7 +1,6 @@
+use crate::Span;
 use std::fmt;
 use std::iter::Peekable;
-
-pub(crate) type Span = std::ops::Range<usize>;
 
 /// Tokens returned from lexing. Represents a small amount of the source code.
 #[derive(Debug, PartialEq, Clone)]
@@ -163,6 +162,23 @@ impl<'t> Default for Token<'t> {
 pub struct TokenTree<'t, I: Iterator<Item = Token<'t>>> {
     pub(crate) input: &'t str,
     pub(crate) tree: Peekable<I>,
+}
+
+impl<'t, 's, I, J> PartialEq<TokenTree<'s, J>> for TokenTree<'t, I>
+where
+    I: Clone + Iterator<Item = Token<'t>>,
+    J: Clone + Iterator<Item = Token<'s>>,
+{
+    fn eq(&self, other: &TokenTree<'s, J>) -> bool {
+        let mut other = other.tree.clone();
+        for a in self.tree.clone() {
+            match other.next() {
+                Some(b) if a == b => {}
+                _ => return false,
+            };
+        }
+        true
+    }
 }
 
 impl<'t, I: Clone + Iterator<Item = Token<'t>>> fmt::Debug for TokenTree<'t, I> {

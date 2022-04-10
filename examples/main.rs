@@ -8,8 +8,8 @@ fn main() {
     let input = include_str!("qft.qasm");
     let cwd = Path::new(file!()).parent().unwrap();
 
-    let processed = process(input, cwd).unwrap();
-    let tokens = lex(&processed);
+    let processed = &*process(input, cwd).unwrap();
+    let tokens = lex(processed);
 
     match parse(tokens.clone()) {
         Ok(ast) => {
@@ -18,7 +18,7 @@ fn main() {
         }
         Err(e) => {
             println!("\x1b[31mGot an error: {}\x1b[0m", e);
-            println!("{:?}", tokens)
+            println!("{:?}", tokens);
         }
     }
 }

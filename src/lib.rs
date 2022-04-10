@@ -171,6 +171,7 @@ mod ast;
 mod error;
 mod lexer;
 mod parser;
+mod pre_proc;
 mod token;
 
 use regex::Regex;
@@ -182,6 +183,8 @@ pub use ast::Argument;
 pub use ast::AstNode;
 pub use error::Error;
 pub use token::Token;
+
+pub(crate) type Span = std::ops::Range<usize>;
 
 /// Remove comments from an input string and resolves include statements.
 ///
@@ -262,6 +265,10 @@ where
     Ok(source)
 }
 
+pub fn process_comments<'t>(input: &'t str) -> pre_proc::ProcStr<'t> {
+    pre_proc::ProcStr::comments(input)
+}
+
 /// Take a source string with no includes or comments and returns the tokens
 ///
 /// The source string can be processed with the [process](fn.process.html) function.
@@ -285,11 +292,16 @@ where
 /// //  QReg, Id("a"), LSParen, NNInteger(3), RSParen, Semicolon,
 /// //  Id("CX"), Id("a"), LSParen, NNInteger(0), RSParen, Comma, Id("a"), LSParen, NNInteger(1), RSParen, Semicolon]
 /// ```
-pub fn lex<'t>(input: &'t str) -> token::TokenTree<'t, lexer::Lexer<'t>> {
-    token::TokenTree {
-        input,
-        tree: lexer::Lexer::new(input).peekable(),
-    }
+pub fn lex<'t, P>(input: P) -> token::TokenTree<'t, impl Clone + Iterator<Item = Token<'t>>>
+where
+    pre_proc::ProcStr<'t>: From<P>,
+{
+    let proc_input = pre_proc::ProcStr::from(input);
+    let input = proc_input.input;
+    let tree = proc_input
+        .flat_map(move |span| lexer::Lexer::new_spanned(input, span))
+        .peekable();
+    token::TokenTree { input, tree }
 }
 
 /// Changes a vector of tokens into an AST.

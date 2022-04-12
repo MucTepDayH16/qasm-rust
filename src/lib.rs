@@ -266,8 +266,9 @@ where
     Ok(source)
 }
 
-pub fn process_comments<'t>(input: &'t str) -> pre_proc::ProcStr<'t> {
-    pre_proc::ProcStr::comments(input)
+pub fn pre_process<'t>(input: &'t str) -> pre_proc::ProcStr<'t> {
+    use pre_proc::ProcStr;
+    ProcStr::from(input).combine(ProcStr::includes).combine(ProcStr::comments)
 }
 
 /// Take a source string with no includes or comments and returns the tokens

@@ -16,7 +16,7 @@ pub fn parse<'t>(
     let mut nodes = vec![];
 
     // Check that the version is first, and that it is version 2.0
-    let version = version(tokens).map_err(|_| Error::MissingVersion)?;
+    let version = version(tokens)?;
     if !SUPPORTED_VERSIONS.contains(&version) {
         return Err(Error::UnsupportedVersion);
     }
@@ -62,7 +62,8 @@ fn version<'t>(tokens: &mut TokenTree<'t, impl Iterator<Item = Token<'t>>>) -> R
             ..
         }) = tokens.tree.peek()
         {
-            version = match_real(tokens)?;
+            match_token(tokens, TokenType::OpenQASM).unwrap();
+            version = match_real(tokens).map_err(|_| Error::MissingVersion)?;
             match_semicolon(tokens)?;
         } else {
             version = 2.0;

@@ -1,6 +1,6 @@
 use crate::Span;
 use regex::Regex;
-use std::{collections::VecDeque, fmt};
+use std::{collections::VecDeque, fmt, iter::FromIterator};
 
 #[derive(Debug, Clone)]
 pub struct ProcStr<'t> {
@@ -9,10 +9,30 @@ pub struct ProcStr<'t> {
 }
 
 impl<'t> ProcStr<'t> {
+    pub fn combine<F: Fn(&'t str) -> Self>(self, f: F) -> Self {
+        let Self { input, inner } = self;
+
+        let inner = inner.into_iter().flat_map(|span| {
+            f(&input[span.clone()]).inner.into_iter().map(move |new_span| {
+                Span { start: new_span.start + span.start, end: new_span.end + span.start }
+            })
+        }).collect();
+
+        Self { input, inner }
+    }
+
     pub fn comments(input: &'t str) -> Self {
+        Self::split_by_regex(input, Regex::new(r"//.*").unwrap())
+    }
+
+    pub fn includes(input: &'t str) -> Self {
+        Self::split_by_regex(input, Regex::new("include\\s+\"(.*)\";").unwrap())
+    }
+
+    fn split_by_regex(input: &'t str, regex: Regex) -> Self {
         let mut prev_end = 0;
         let mut processed = VecDeque::new();
-        for comment in Regex::new(r"//.*").unwrap().captures_iter(input) {
+        for comment in regex.captures_iter(input) {
             let m = comment.get(0).unwrap();
             let cut_input = &input[prev_end..m.start()];
             if !cut_input.trim().is_empty() {

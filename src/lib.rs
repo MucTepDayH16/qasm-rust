@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! # QASM
 //!
 //! This library is a parser for the IBM OpenQASM 2.0 language.

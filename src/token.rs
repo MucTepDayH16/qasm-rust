@@ -164,6 +164,12 @@ pub struct TokenTree<'t, I: Iterator<Item = Token<'t>>> {
     pub(crate) tree: Peekable<I>,
 }
 
+impl<'t, I: Iterator<Item = Token<'t>>> TokenTree<'t, I> {
+    pub fn is_empty(&self) -> bool {
+        self.input.is_empty()
+    }
+}
+
 impl<'t, 's, I, J> PartialEq<TokenTree<'s, J>> for TokenTree<'t, I>
 where
     I: Clone + Iterator<Item = Token<'t>>,

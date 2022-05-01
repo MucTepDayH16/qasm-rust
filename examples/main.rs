@@ -1,4 +1,4 @@
-extern crate qasm;
+extern crate qvnt_qasm as qasm;
 
 use qasm::{lex, parse, process};
 use std::path::Path;

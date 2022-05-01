@@ -1,6 +1,6 @@
 [package]
-name = "qasm"
-version = "0.1.0"
+name = "qvnt-qasm"
+version = "0.2.0"
 authors = ["Adam Kelly <adamkelly2201@gmail.com>"]
 description = "A OPENQASM 2.0 Parser"
 homepage = "https://github.com/QCGPU/qasm-rust"
@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 
 [badges]
-travis-ci = { repository = "QCGPU/qasm-rust", branch = "master" }
+travis-ci = { repository = "MucTepDayH16/qasm-rust", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [features]

@@ -1,5 +1,5 @@
 extern crate glob;
-extern crate qasm;
+extern crate qvnt_qasm as qasm;
 
 use glob::glob;
 use qasm::{lex, parse, process};

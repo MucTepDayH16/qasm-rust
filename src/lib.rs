@@ -132,7 +132,7 @@
 //! ### main.rs
 //!
 //! ```no_run
-//! extern crate qasm;
+//! extern crate qvnt_qasm as qasm;
 //!
 //! use std::env;
 //! use std::fs::File;

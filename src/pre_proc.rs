@@ -157,7 +157,7 @@ fn lexer_test() {
     measure b[3] -> ans[3];
     measure cout[0] -> ans[4];";
 
-    let source = crate::process_comments(source);
+    let source = crate::pre_process(source);
     let comments = crate::lex(source);
 
     assert_eq!(comments, no_comments);
